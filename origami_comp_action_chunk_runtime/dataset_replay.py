@@ -745,6 +745,7 @@ class DatasetReplayRunner:
                                         episode_bar.update(1)
 
         elapsed = time.perf_counter() - started
+        summary_path = mode_output_dir / self.replay.summary_filename
         summary = {
             "tactile_mode": tactile_mode,
             "elapsed_seconds": float(elapsed),
@@ -752,9 +753,10 @@ class DatasetReplayRunner:
             "planned_samples": int(planned_samples),
             "processed_samples": int(processed),
             "per_sample_path": str(per_sample_path) if self.replay.save_per_sample else None,
+            "summary_path": str(summary_path),
             "metrics": accumulator.summary(),
         }
-        dump_json(mode_output_dir / self.replay.summary_filename, summary)
+        dump_json(summary_path, summary)
         return summary
 
     def _should_compute_loss(self, processed_samples: int, loss_samples: int) -> bool:
