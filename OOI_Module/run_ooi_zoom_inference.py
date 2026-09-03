@@ -65,7 +65,7 @@ def main() -> None:
             wrist_left_tokens=tokens[1],
             wrist_right_tokens=tokens[2],
             head_left_model_rgb=head_left_model_rgb,
-            source_input_size=int(head_left_rgb.shape[0]),
+            source_input_size=int(head_left_model_rgb.shape[0]),
             input_mode=str(runtime_cfg.get("input_mode", "auto")),
         )
     else:

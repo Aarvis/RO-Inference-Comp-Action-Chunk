@@ -204,7 +204,7 @@ class CompActionChunkPipeline:
             wrist_left_tokens=camera_tokens[1],
             wrist_right_tokens=camera_tokens[2],
             head_left_model_rgb=head_left,
-            source_input_size=int(head_left_input.shape[0]),
+            source_input_size=int(head_left.shape[0]),
             input_mode=self.config.runtime.ooi_input_mode,  # type: ignore[arg-type]
         )
         ooi_ms = (time.perf_counter() - ooi_started) * 1000.0
