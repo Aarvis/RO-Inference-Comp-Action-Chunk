@@ -44,10 +44,18 @@ RO-Inference-Comp-Action-Chunk/OpenPI_Module/configs/openpi_comp_action_chunk_ru
 
 Key paths:
 
-- `paths.openpi_source_root`: development source checkout, usually `../../../openpi/src`
 - `paths.checkpoint_dir`: trained checkpoint directory containing `params/` and `assets/`
 - `paths.tokenizer_model_path`: local `paligemma_tokenizer.model`
 - `paths.asset_id`: should be `competition_paper_reprocessed_origami_comp_action_chunk`
+
+OpenPI source is loaded from the project-vendored copy at:
+
+```text
+RO-Inference-Comp-Action-Chunk/vendor/openpi/src
+```
+
+That vendored source must match the OpenPI checkout used for the final
+`pi05_origami_comp_action_chunk` training run.
 
 For final packaging, place the trained checkpoint under:
 

@@ -90,7 +90,7 @@ class OpenPICompActionChunkRuntime:
         self.config = config
 
         configure_jax_environment(self.config.jax)
-        ensure_openpi_on_path(self.config.openpi_source_root)
+        ensure_openpi_on_path(self.config.vendored_source_root or self.config.openpi_source_root)
 
         from openpi.shared import download as openpi_download
 

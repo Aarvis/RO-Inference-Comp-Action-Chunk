@@ -15,6 +15,7 @@ if str(ROOT) not in sys.path:
 OPENPI_MODULE = ROOT / "OpenPI_Module"
 if str(OPENPI_MODULE) not in sys.path:
     sys.path.insert(0, str(OPENPI_MODULE))
+VENDORED_OPENPI_SOURCE_ROOT = ROOT / "vendor" / "openpi" / "src"
 
 from origami_comp_action_chunk_runtime import load_origami_comp_action_chunk_bundle  # noqa: E402
 from OpenPI_Module.openpi_runtime import load_openpi_runtime_config  # noqa: E402
@@ -38,6 +39,11 @@ def _inside(path: Path, root: Path) -> bool:
 def _ensure_inside_bundle(path: Path, *, bundle_root: Path, label: str) -> None:
     if not _inside(path, bundle_root):
         raise FileNotFoundError(f"{label} must live inside the model bundle: {path}")
+
+
+def _ensure_inside_project(path: Path, *, label: str) -> None:
+    if not _inside(path, ROOT):
+        raise FileNotFoundError(f"{label} must live inside the inference project: {path}")
 
 
 def _check_file(
@@ -76,6 +82,17 @@ def _check_dir(
     return CheckResult(label=label, path=resolved)
 
 
+def _check_project_dir(path: Path, *, label: str, allow_missing: bool, allow_external: bool = False) -> CheckResult:
+    resolved = path.resolve()
+    if not allow_external:
+        _ensure_inside_project(resolved, label=label)
+    if not resolved.is_dir():
+        if allow_missing:
+            return CheckResult(label=label, path=resolved, status="missing")
+        raise FileNotFoundError(f"{label} not found: {resolved}")
+    return CheckResult(label=label, path=resolved)
+
+
 def _read_yaml(path: Path) -> dict:
     payload = yaml.safe_load(path.read_text(encoding="utf-8"))
     if payload is None:
@@ -88,6 +105,60 @@ def _read_yaml(path: Path) -> dict:
 def _iter_dino_weight_names(path: Path) -> Iterable[str]:
     for name in ("model.safetensors", "pytorch_model.bin"):
         yield name
+
+
+def _verify_openpi_snapshot(openpi_payload: dict) -> None:
+    paths_section = openpi_payload.get("paths", {})
+    if isinstance(paths_section, dict) and "openpi_source_root" in paths_section:
+        raise ValueError("OpenPI runtime bundle config must not define paths.openpi_source_root.")
+
+    openpi_section = openpi_payload.get("openpi")
+    if not isinstance(openpi_section, dict):
+        raise ValueError("OpenPI runtime config must contain an openpi mapping.")
+    if openpi_section.get("config_name") != "pi05_origami_comp_action_chunk":
+        raise ValueError("openpi.config_name must be pi05_origami_comp_action_chunk.")
+    if openpi_section.get("vendored_source_root") in (None, ""):
+        raise ValueError("OpenPI runtime config must define openpi.vendored_source_root.")
+
+    model = openpi_section.get("model")
+    if not isinstance(model, dict):
+        raise ValueError("OpenPI runtime config must include openpi.model snapshot.")
+    expected_model = {
+        "pi05": True,
+        "action_dim": 65,
+        "state_dim": 65,
+        "action_horizon": 10,
+        "max_token_len": 768,
+        "discrete_state_input": True,
+    }
+    for key, expected in expected_model.items():
+        if model.get(key) != expected:
+            raise ValueError(f"openpi.model.{key} must be {expected!r}, got {model.get(key)!r}.")
+
+    origami = model.get("origami_vla")
+    if not isinstance(origami, dict):
+        raise ValueError("OpenPI runtime config must include openpi.model.origami_vla snapshot.")
+    expected_origami = {
+        "enabled": True,
+        "action_mode": "action_chunk",
+        "belief_dim": 29,
+        "history_dim": 512,
+        "tactile_dim": 60,
+        "tactile_prompt_input": True,
+        "prompt_discrete_clip": True,
+        "tactile_enabled": False,
+        "ftp_tactile_enabled": True,
+        "ftp_tactile_branch": "auto",
+        "ftp_tactile_image_size": 224,
+        "ftp_tactile_prefix_dim": 2048,
+        "ftp_tactile_tokens_per_finger": 4,
+        "ftp_tactile_hands": 2,
+        "ftp_tactile_fingers_per_hand": 5,
+        "ftp_tactile_freeze_backbone": True,
+    }
+    for key, expected in expected_origami.items():
+        if origami.get(key) != expected:
+            raise ValueError(f"openpi.model.origami_vla.{key} must be {expected!r}, got {origami.get(key)!r}.")
 
 
 def verify_bundle(
@@ -223,6 +294,8 @@ def verify_bundle(
             raise FileNotFoundError(f"DINO weights not found under {dino_dir}")
 
     openpi_config = load_openpi_runtime_config(config.paths.openpi_runtime_config)
+    openpi_payload = _read_yaml(config.paths.openpi_runtime_config)
+    _verify_openpi_snapshot(openpi_payload)
     if openpi_config.action_horizon != config.server.action_horizon:
         raise ValueError(
             f"OpenPI action_horizon={openpi_config.action_horizon} does not match server.action_horizon={config.server.action_horizon}"
@@ -279,43 +352,43 @@ def verify_bundle(
             ]
         )
 
-    if openpi_config.openpi_source_root is not None:
-        results.append(
-            _check_dir(
-                openpi_config.openpi_source_root,
-                label="OpenPI source root",
-                bundle_root=bundle_root,
-                allow_missing=allow_missing_model_files,
-                enforce_inside=not allow_external_code,
-            )
+    openpi_source_root = (
+        openpi_config.vendored_source_root
+        or openpi_config.openpi_source_root
+        or VENDORED_OPENPI_SOURCE_ROOT
+    )
+    results.append(
+        _check_project_dir(
+            openpi_source_root,
+            label="Project-vendored OpenPI source root",
+            allow_missing=False,
+            allow_external=allow_external_code,
         )
-        results.append(
-            _check_dir(
-                openpi_config.openpi_source_root / "openpi",
-                label="OpenPI python package",
-                bundle_root=bundle_root,
-                allow_missing=allow_missing_model_files,
-                enforce_inside=not allow_external_code,
-            )
+    )
+    results.append(
+        _check_project_dir(
+            openpi_source_root / "openpi",
+            label="Project-vendored OpenPI python package",
+            allow_missing=False,
+            allow_external=allow_external_code,
         )
-        results.append(
-            _check_dir(
-                openpi_config.openpi_source_root / "openpi_client",
-                label="OpenPI client python package",
-                bundle_root=bundle_root,
-                allow_missing=allow_missing_model_files,
-                enforce_inside=not allow_external_code,
-            )
+    )
+    results.append(
+        _check_project_dir(
+            openpi_source_root / "openpi_client",
+            label="Project-vendored OpenPI client python package",
+            allow_missing=False,
+            allow_external=allow_external_code,
         )
-        results.append(
-            _check_dir(
-                openpi_config.openpi_source_root / "future_latent_predictor",
-                label="OpenPI future-latent helper package",
-                bundle_root=bundle_root,
-                allow_missing=allow_missing_model_files,
-                enforce_inside=not allow_external_code,
-            )
+    )
+    results.append(
+        _check_project_dir(
+            openpi_source_root / "future_latent_predictor",
+            label="Project-vendored OpenPI future-latent helper package",
+            allow_missing=False,
+            allow_external=allow_external_code,
         )
+    )
 
     if require_dataset_replay:
         results.append(
@@ -353,7 +426,7 @@ def main() -> int:
     parser.add_argument(
         "--allow-external-code",
         action="store_true",
-        help="Allow paths.openpi_source_root to point outside the bundle.",
+        help="Allow OpenPI source to resolve outside RO-Inference-Comp-Action-Chunk/vendor/openpi/src.",
     )
     parser.add_argument(
         "--require-dataset-replay",

@@ -16,6 +16,18 @@ The public server accepts the latest `inferencekit_09_02_2026` `origami-zenoh-v1
 
 `model_bundle/bundle.yaml` is the single source of runtime paths. The Docker image is built around this folder.
 
+OpenPI runtime code is vendored in the project at:
+
+```text
+vendor/openpi/src/
+  openpi/...
+  openpi_client/...
+  future_latent_predictor/...
+```
+
+This source must match the OpenPI checkout used for the final
+`pi05_origami_comp_action_chunk` training run.
+
 Required files:
 
 ```text
@@ -23,10 +35,6 @@ model_bundle/
   bundle.yaml
   assets/
     paligemma_tokenizer.model
-  code/
-    openpi/src/openpi/...
-    openpi/src/openpi_client/...
-    openpi/src/future_latent_predictor/...
   configs/
     ooi_zoom_runtime.yaml
     checkpoint_planner_runtime_model.yaml
@@ -46,7 +54,10 @@ model_bundle/
     episodes/...   # optional small replay set baked into the image
 ```
 
-The bundled OpenPI source must be the same source used for `pi05_origami_comp_action_chunk`; it contains the checkpoint-planner adapter and FTP tactile prefix encoder code.
+`model_bundle/configs/openpi_comp_action_chunk_runtime.yaml` contains the
+runtime `openpi.config_name: pi05_origami_comp_action_chunk` plus a snapshot of
+the training-critical OpenPI model, data, weight-loader, and optimizer config
+values used for packaging checks.
 
 ## Prepare Bundle
 
@@ -59,13 +70,27 @@ python .\scripts\prepare_comp_action_chunk_bundle.py `
   --source-config .\configs\dataset_replay.yaml `
   --bundle-root .\model_bundle `
   --copy-mode copy `
-  --include-openpi-source `
   --overwrite
 ```
 
 Use `--copy-mode hardlink` only when all source files are on the same filesystem and you want to avoid duplicating large files locally. Do not use `--copy-mode symlink` for the final Docker build, because the image must contain real files.
 
 If the script reports missing sources, copy them manually into the expected `model_bundle/` locations above, or fix the source paths in `configs/dataset_replay.yaml` and rerun the script.
+
+To refresh the project-vendored OpenPI source from
+`E:\Robot-Origami-Challenge\openpi`, run:
+
+```powershell
+python .\scripts\prepare_comp_action_chunk_bundle.py `
+  --source-config .\configs\dataset_replay.yaml `
+  --bundle-root .\model_bundle `
+  --copy-mode copy `
+  --include-openpi-source `
+  --overwrite
+```
+
+That command updates `vendor/openpi/src`; it does not add code under
+`model_bundle/`.
 
 ## Add Replay Episodes
 

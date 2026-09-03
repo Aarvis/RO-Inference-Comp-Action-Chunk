@@ -18,8 +18,12 @@ def module_root() -> Path:
     return Path(__file__).resolve().parents[1]
 
 
+def project_root() -> Path:
+    return module_root().parent
+
+
 def vendor_root() -> Path:
-    return module_root() / "vendor"
+    return project_root() / "vendor" / "openpi" / "src"
 
 
 def default_tokenizer_path() -> Path:
@@ -49,6 +53,13 @@ def ensure_openpi_on_path(openpi_source_root: str | Path | None = None) -> None:
     vendored = vendor_root()
     if (vendored / "openpi").is_dir():
         root = str(vendored)
+        if root not in sys.path:
+            sys.path.insert(0, root)
+        return
+
+    legacy_vendored = module_root() / "vendor"
+    if (legacy_vendored / "openpi").is_dir():
+        root = str(legacy_vendored)
         if root not in sys.path:
             sys.path.insert(0, root)
         return

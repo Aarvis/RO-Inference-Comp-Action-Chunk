@@ -20,6 +20,7 @@ class JaxRuntimeConfig:
 class OpenPICompActionChunkRuntimeConfig:
     config_name: str
     checkpoint_dir: Path
+    vendored_source_root: Path | None
     openpi_source_root: Path | None
     tokenizer_model_path: Path | None
     asset_id: str | None
@@ -92,6 +93,7 @@ def load_openpi_runtime_config(config_path: str | Path) -> OpenPICompActionChunk
     return OpenPICompActionChunkRuntimeConfig(
         config_name=str(openpi_cfg.get("config_name", "pi05_origami_comp_action_chunk")),
         checkpoint_dir=checkpoint_dir,
+        vendored_source_root=_resolve_path(openpi_cfg.get("vendored_source_root"), config_dir=config_dir),
         openpi_source_root=_resolve_path(paths_cfg.get("openpi_source_root"), config_dir=config_dir),
         tokenizer_model_path=_resolve_path(paths_cfg.get("tokenizer_model_path"), config_dir=config_dir),
         asset_id=paths_cfg.get("asset_id"),

@@ -25,6 +25,7 @@ from OpenPI_Module.openpi_runtime import load_openpi_runtime_config  # noqa: E40
 
 DEFAULT_SOURCE_CONFIG = ROOT / "configs" / "dataset_replay.yaml"
 DEFAULT_BUNDLE_ROOT = ROOT / "model_bundle"
+VENDORED_OPENPI_SOURCE_ROOT = ROOT / "vendor" / "openpi" / "src"
 
 
 def _path_to_text(path: Path) -> str:
@@ -85,6 +86,9 @@ def _materialize(src: Path | None, dst: Path, *, label: str, mode: str, overwrit
     if src in (None, ""):
         return f"skip     : {label} has no source"
     source = Path(src).resolve()
+    dst = dst.resolve()
+    if source == dst:
+        return f"skip     : {label} already points at {dst}"
     if not source.exists():
         return f"missing  : {label} source not found -> {source}"
     if mode == "none":
@@ -133,13 +137,12 @@ def _rewrite_planner_config(source_config: Path, bundle_config: Path) -> None:
     _write_yaml(bundle_config, payload)
 
 
-def _rewrite_openpi_config(source_config: Path, bundle_config: Path, checkpoint_name: str, include_openpi_source: bool) -> None:
+def _rewrite_openpi_config(source_config: Path, bundle_config: Path, checkpoint_name: str) -> None:
     payload = load_yaml(source_config)
     paths = dict(payload.get("paths", {}))
     paths["checkpoint_dir"] = f"../weights/openpi/{checkpoint_name}"
     paths["tokenizer_model_path"] = "../assets/paligemma_tokenizer.model"
-    if include_openpi_source:
-        paths["openpi_source_root"] = "../code/openpi/src"
+    paths.pop("openpi_source_root", None)
     payload["paths"] = paths
     _write_yaml(bundle_config, payload)
 
@@ -154,6 +157,8 @@ def _find_openpi_project_root(openpi_source_root: Path | None) -> Path | None:
 
 
 def _find_openpi_client_source(openpi_source_root: Path | None) -> Path | None:
+    if openpi_source_root is not None and (openpi_source_root / "openpi_client").is_dir():
+        return openpi_source_root / "openpi_client"
     project_root = _find_openpi_project_root(openpi_source_root)
     if project_root is None:
         return None
@@ -165,6 +170,8 @@ def _find_openpi_client_source(openpi_source_root: Path | None) -> Path | None:
 
 
 def _find_future_latent_source(openpi_source_root: Path | None) -> Path | None:
+    if openpi_source_root is not None and (openpi_source_root / "future_latent_predictor").is_dir():
+        return openpi_source_root / "future_latent_predictor"
     project_root = _find_openpi_project_root(openpi_source_root)
     if project_root is None:
         return None
@@ -173,6 +180,16 @@ def _find_future_latent_source(openpi_source_root: Path | None) -> Path | None:
         project_root.parent / "future_latent_predictor",
     )
     return next((path for path in candidates if path.is_dir()), None)
+
+
+def _infer_openpi_source_root(configured_root: Path | None) -> Path | None:
+    if configured_root is not None:
+        return configured_root
+    candidates = (
+        ROOT.parent / "openpi" / "src",
+        VENDORED_OPENPI_SOURCE_ROOT,
+    )
+    return next((path.resolve() for path in candidates if (path / "openpi").is_dir()), None)
 
 
 def prepare_bundle(
@@ -206,7 +223,6 @@ def prepare_bundle(
         config.paths.openpi_runtime_config,
         configs_dir / "openpi_comp_action_chunk_runtime.yaml",
         openpi_checkpoint_name,
-        include_openpi_source,
     )
 
     bundle_payload = {
@@ -297,12 +313,15 @@ def prepare_bundle(
         )
     )
     if include_openpi_source:
-        openpi_source_root = openpi_config.openpi_source_root
+        openpi_source_root = _infer_openpi_source_root(
+            openpi_config.vendored_source_root or openpi_config.openpi_source_root
+        )
+        vendored_source_root = VENDORED_OPENPI_SOURCE_ROOT
         messages.append(
             _materialize(
                 openpi_source_root,
-                bundle_root / "code" / "openpi" / "src",
-                label="OpenPI source root",
+                vendored_source_root,
+                label="Project-vendored OpenPI source root",
                 mode=copy_mode,
                 overwrite=overwrite,
             )
@@ -310,8 +329,8 @@ def prepare_bundle(
         messages.append(
             _materialize(
                 _find_openpi_client_source(openpi_source_root),
-                bundle_root / "code" / "openpi" / "src" / "openpi_client",
-                label="OpenPI client package",
+                vendored_source_root / "openpi_client",
+                label="Project-vendored OpenPI client package",
                 mode=copy_mode,
                 overwrite=overwrite,
             )
@@ -319,8 +338,8 @@ def prepare_bundle(
         messages.append(
             _materialize(
                 _find_future_latent_source(openpi_source_root),
-                bundle_root / "code" / "openpi" / "src" / "future_latent_predictor",
-                label="OpenPI future-latent helper package",
+                vendored_source_root / "future_latent_predictor",
+                label="Project-vendored OpenPI future-latent helper package",
                 mode=copy_mode,
                 overwrite=overwrite,
             )
@@ -343,7 +362,7 @@ def main() -> int:
     parser.add_argument(
         "--include-openpi-source",
         action="store_true",
-        help="Copy/link paths.openpi_source_root into model_bundle/code/openpi/src.",
+        help="Copy/link OpenPI source into project vendor/openpi/src. It is not stored in model_bundle.",
     )
     args = parser.parse_args()
 
