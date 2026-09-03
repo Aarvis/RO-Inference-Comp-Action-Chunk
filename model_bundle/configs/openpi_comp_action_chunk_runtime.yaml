@@ -1,0 +1,27 @@
+paths:
+  openpi_source_root: ../code/openpi/src
+  checkpoint_dir: ../weights/openpi/pi05_origami_comp_action_chunk
+  tokenizer_model_path: ../assets/paligemma_tokenizer.model
+  asset_id: competition_paper_reprocessed_origami_comp_action_chunk
+openpi:
+  config_name: pi05_origami_comp_action_chunk
+prompt: fold paper into airplane
+runtime:
+  policy_sample_steps: 10
+  random_seed: 0
+  jax:
+    preallocate: false
+    mem_fraction: 0.6
+    allocator: platform
+    platforms: null
+input:
+  image_size: 224
+  state_dim: 65
+  action_dim: 65
+  action_horizon: 10
+  tactile_dim: 60
+  tactile_image_size: 224
+  tolerate_invalid_optional_raw: true
+  raw_zero_is_unavailable: true
+output:
+  require_finite_actions: true
