@@ -171,6 +171,7 @@ $env:XLA_PYTHON_CLIENT_ALLOCATOR="platform"
 
 python .\run_dataset_replay.py `
   --bundle-root .\model_bundle `
+  --warmup-inferences 1 `
   --max-episodes 1 `
   --max-total-samples 30 `
   --max-loss-samples 10 `
@@ -246,6 +247,7 @@ Run a small internal dataset replay from the baked-in replay episodes:
 docker run --rm --gpus all \
   --shm-size 8g \
   -e ORIGAMI_JAX_MEM_FRACTION=0.60 \
+  -e ORIGAMI_WARMUP_INFERENCES=1 \
   ro-inference-comp-action-chunk:async \
   dataset-replay \
   --max-episodes 1 \
@@ -346,6 +348,7 @@ Useful optional env vars:
 EXECUTION_MODE=async
 ORIGAMI_MODEL_BUNDLE=/app/RO-Inference-Comp-Action-Chunk/model_bundle
 ORIGAMI_WARMUP_INFERENCES=1
+ORIGAMI_REPLAY_WARMUP_TRAINING_LOSS=1
 ORIGAMI_JAX_MEM_FRACTION=0.60
 XLA_PYTHON_CLIENT_PREALLOCATE=false
 XLA_PYTHON_CLIENT_ALLOCATOR=platform

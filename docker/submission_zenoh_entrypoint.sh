@@ -23,6 +23,7 @@ fi
 bundle_root="${ORIGAMI_MODEL_BUNDLE:-/app/RO-Inference-Comp-Action-Chunk/model_bundle}"
 execution_mode="${EXECUTION_MODE:-async}"
 warmup_inferences="${ORIGAMI_WARMUP_INFERENCES:-1}"
+replay_warmup_training_loss="${ORIGAMI_REPLAY_WARMUP_TRAINING_LOSS:-1}"
 jax_mem_fraction="${ORIGAMI_JAX_MEM_FRACTION:-${XLA_PYTHON_CLIENT_MEM_FRACTION:-0.60}}"
 
 case "${execution_mode}" in
@@ -73,7 +74,12 @@ case "${mode}" in
     ;;
   dataset-replay)
     echo "[submission] mode=dataset-replay bundle=${bundle_root}" >&2
-    exec python run_dataset_replay.py --bundle-root "${bundle_root}" "$@"
+    replay_warmup_args=(--warmup-inferences "${warmup_inferences}")
+    replay_warmup_training_loss_lc="$(printf '%s' "${replay_warmup_training_loss}" | tr '[:upper:]' '[:lower:]')"
+    if [ "${replay_warmup_training_loss_lc}" = "0" ] || [ "${replay_warmup_training_loss_lc}" = "false" ]; then
+      replay_warmup_args+=(--skip-warmup-training-loss)
+    fi
+    exec python run_dataset_replay.py --bundle-root "${bundle_root}" "${replay_warmup_args[@]}" "$@"
     ;;
   serve)
     : "${ORIGAMI_ZENOH_ENDPOINT:?ORIGAMI_ZENOH_ENDPOINT is required}"

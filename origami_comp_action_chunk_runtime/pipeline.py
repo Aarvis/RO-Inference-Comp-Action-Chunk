@@ -132,8 +132,16 @@ class CompActionChunkPipeline:
         self.planner_runtime.reset()
         self.openpi_runtime.reset()
 
-    def warmup(self, count: int = 1, *, prompt: str = "fold paper into airplane") -> None:
-        for _ in range(max(0, int(count))):
+    def warmup(
+        self,
+        count: int = 1,
+        *,
+        prompt: str = "fold paper into airplane",
+        compute_training_loss: bool = False,
+        loss_noise_samples: int = 1,
+        loss_train_mode: bool = False,
+    ) -> None:
+        for index in range(max(0, int(count))):
             observation = {
                 HEAD_LEFT_KEY: np.zeros((self.config.runtime.camera_image_size, self.config.runtime.camera_image_size, 3), dtype=np.uint8),
                 WRIST_LEFT_KEY: np.zeros((self.config.runtime.camera_image_size, self.config.runtime.camera_image_size, 3), dtype=np.uint8),
@@ -143,7 +151,22 @@ class CompActionChunkPipeline:
                 TACTILE_DEFORM_KEY: np.zeros((480, 1200, 3), dtype=np.uint8),
                 "prompt": prompt,
             }
-            self.infer(observation, prompt=prompt, use_raw_tactile=False)
+            self.infer(
+                observation,
+                prompt=prompt,
+                use_raw_tactile=False,
+                target_actions_65d=np.zeros(
+                    (
+                        int(self.openpi_runtime.config.action_horizon),
+                        int(self.openpi_runtime.config.action_dim),
+                    ),
+                    dtype=np.float32,
+                ),
+                compute_training_loss=bool(compute_training_loss),
+                loss_rng_seed=index,
+                loss_noise_samples=int(loss_noise_samples),
+                loss_train_mode=bool(loss_train_mode),
+            )
         self.reset()
 
     def close(self) -> None:

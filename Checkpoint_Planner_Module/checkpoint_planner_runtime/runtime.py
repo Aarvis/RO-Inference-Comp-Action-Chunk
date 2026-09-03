@@ -452,6 +452,8 @@ class CheckpointPlannerRuntime:
     ) -> torch.Tensor:
         if values is None:
             return torch.zeros((expected_dim,), dtype=torch.float32, device=self.device)
+        if isinstance(values, np.ndarray) and not values.flags.writeable:
+            values = np.array(values, copy=True)
         tensor = torch.as_tensor(values, dtype=torch.float32).to(device=self.device)
         if tensor.ndim == 2 and tensor.shape[0] == 1:
             tensor = tensor[0]

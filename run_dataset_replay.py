@@ -25,6 +25,18 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--max-total-samples", type=int, default=None, help="Limit replay samples per tactile mode.")
     parser.add_argument("--max-loss-samples", type=int, default=None, help="Limit diffusion-loss samples per tactile mode.")
     parser.add_argument("--loss-every-n-samples", type=int, default=None, help="Compute diffusion loss every N replay samples.")
+    parser.add_argument(
+        "--warmup-inferences",
+        type=int,
+        default=None,
+        help="Number of startup warmup inferences before collecting replay metrics.",
+    )
+    parser.add_argument("--skip-warmup", action="store_true", help="Do not run startup warmup inferences.")
+    parser.add_argument(
+        "--skip-warmup-training-loss",
+        action="store_true",
+        help="Do not warm up the optional OpenPI training-style loss path.",
+    )
     parser.add_argument("--tactile-modes", nargs="+", default=None, help="Subset/order of tactile modes to run.")
     parser.add_argument("--skip-action-error", action="store_true", help="Do not compute action rollout error.")
     parser.add_argument("--skip-training-loss", action="store_true", help="Do not compute OpenPI training-style loss.")
@@ -139,6 +151,12 @@ def main() -> int:
         replay = dataclasses.replace(replay, max_loss_samples=int(args.max_loss_samples))
     if args.loss_every_n_samples is not None:
         replay = dataclasses.replace(replay, loss_every_n_samples=int(args.loss_every_n_samples))
+    if args.warmup_inferences is not None:
+        replay = dataclasses.replace(replay, warmup_inferences=int(args.warmup_inferences))
+    if args.skip_warmup:
+        replay = dataclasses.replace(replay, warmup_inferences=0)
+    if args.skip_warmup_training_loss:
+        replay = dataclasses.replace(replay, warmup_training_loss=False)
     if args.tactile_modes is not None:
         replay = dataclasses.replace(replay, tactile_modes=tuple(str(mode) for mode in args.tactile_modes))
     if args.skip_action_error:

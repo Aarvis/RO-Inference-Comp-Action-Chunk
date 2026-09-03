@@ -471,6 +471,28 @@ class DatasetReplayRunner:
 
         logger.info("dataset replay loading pipeline")
         pipeline = CompActionChunkPipeline(self.config)
+        warmup_count = self._warmup_count()
+        if warmup_count > 0:
+            warmup_loss = bool(self.replay.compute_training_loss and self.replay.warmup_training_loss)
+            logger.info(
+                "dataset replay warming up pipeline count=%d training_loss=%s",
+                warmup_count,
+                warmup_loss,
+            )
+            warmup_started = time.perf_counter()
+            pipeline.warmup(
+                warmup_count,
+                prompt=self.replay.prompt,
+                compute_training_loss=warmup_loss,
+                loss_noise_samples=self.replay.loss_noise_samples,
+                loss_train_mode=self.replay.loss_train_mode,
+            )
+            logger.info(
+                "dataset replay warmup complete elapsed_seconds=%.3f",
+                time.perf_counter() - warmup_started,
+            )
+        else:
+            logger.info("dataset replay warmup skipped")
         mode_summaries: dict[str, Any] = {}
         for tactile_mode in self.replay.tactile_modes:
             mode_plan = plan["modes"][tactile_mode]
@@ -741,6 +763,11 @@ class DatasetReplayRunner:
         if self.replay.max_loss_samples is not None and loss_samples >= int(self.replay.max_loss_samples):
             return False
         return processed_samples % int(self.replay.loss_every_n_samples) == 0
+
+    def _warmup_count(self) -> int:
+        if self.replay.warmup_inferences is not None:
+            return max(0, int(self.replay.warmup_inferences))
+        return max(0, int(self.config.server.warmup_inferences))
 
 
 def discover_episode_roots(dataset_root: Path, replay: DatasetReplayConfig) -> list[Path]:

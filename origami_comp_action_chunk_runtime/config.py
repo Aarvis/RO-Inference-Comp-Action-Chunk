@@ -100,6 +100,8 @@ class RuntimeConfig:
 
 @dataclasses.dataclass(frozen=True)
 class DatasetReplayConfig:
+    warmup_inferences: int | None = None
+    warmup_training_loss: bool = True
     episode_uids: tuple[str, ...] = ()
     max_episodes: int | None = None
     action_horizon: int = 10
@@ -271,6 +273,12 @@ def _parse_origami_comp_action_chunk_config(
     )
 
     replay = DatasetReplayConfig(
+        warmup_inferences=(
+            None
+            if replay_cfg.get("warmup_inferences") in (None, "")
+            else int(replay_cfg.get("warmup_inferences"))
+        ),
+        warmup_training_loss=bool(replay_cfg.get("warmup_training_loss", True)),
         episode_uids=_as_tuple_str(replay_cfg.get("episode_uids"), ()),
         max_episodes=(
             None if replay_cfg.get("max_episodes") in (None, "") else int(replay_cfg.get("max_episodes"))

@@ -113,7 +113,16 @@ def main() -> int:
     config = dataclasses.replace(config, runtime=runtime, server=server)
     pipeline = CompActionChunkPipeline(config)
     warmup_count = int(config.server.warmup_inferences if args.warmup_inferences is None else args.warmup_inferences)
-    pipeline.warmup(warmup_count, prompt=config.dataset_replay.prompt)
+    if warmup_count > 0:
+        logging.info("warming up pipeline before serving count=%d", warmup_count)
+        pipeline.warmup(
+            warmup_count,
+            prompt=config.dataset_replay.prompt,
+            compute_training_loss=False,
+        )
+        logging.info("pipeline warmup complete; declaring server readiness next")
+    else:
+        logging.info("pipeline warmup skipped")
 
     zenoh_server = OrigamiCompActionChunkZenohServer(
         pipeline,

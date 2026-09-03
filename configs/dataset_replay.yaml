@@ -35,6 +35,8 @@ server:
   log_inference_every_n: 1
 
 dataset_replay:
+  warmup_inferences:
+  warmup_training_loss: true
   prompt: fold paper into airplane
   action_horizon: 10
   step_stride: 10

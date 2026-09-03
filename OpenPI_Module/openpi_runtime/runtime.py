@@ -126,7 +126,8 @@ class OpenPICompActionChunkRuntime:
             self._compute_loss_and_metrics = None
         else:
             self._compute_loss_and_metrics = self._openpi_nnx_utils.module_jit(
-                self.policy._model.compute_loss_and_metrics  # type: ignore[attr-defined]
+                self.policy._model.compute_loss_and_metrics,  # type: ignore[attr-defined]
+                static_argnames=("train",),
             )
         self.reset()
         logger.info(

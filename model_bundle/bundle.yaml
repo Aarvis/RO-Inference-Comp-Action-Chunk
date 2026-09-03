@@ -36,6 +36,8 @@ server:
   log_inference_requests: true
   log_inference_every_n: 1
 dataset_replay:
+  warmup_inferences: null
+  warmup_training_loss: true
   episode_uids: []
   max_episodes: null
   action_horizon: 10
