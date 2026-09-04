@@ -116,11 +116,22 @@ class OpenPICompActionChunkRuntime:
         self.model_config = self.train_config.model
         self._validate_loaded_config()
 
+        restore_dtype = self._resolve_openpi_restore_dtype(self.config.openpi_param_dtype)
+        normalized_restore_dtype = (
+            None
+            if self.config.openpi_param_dtype is None
+            else str(self.config.openpi_param_dtype).strip().lower()
+        )
+        if normalized_restore_dtype in ("fp32", "float32"):
+            logger.warning(
+                "Loading OpenPI params in float32 for testing. This increases GPU memory versus bfloat16."
+            )
         self.policy = self._openpi_policy_config.create_trained_policy(
             self.train_config,
             self.checkpoint_dir,
             sample_kwargs={"num_steps": int(self.config.policy_sample_steps)},
             default_prompt=self.config.default_prompt,
+            restore_dtype=restore_dtype,
         )
         if getattr(self.policy, "_is_pytorch_model", False):
             self._compute_loss_and_metrics = None
@@ -131,11 +142,35 @@ class OpenPICompActionChunkRuntime:
             )
         self.reset()
         logger.info(
-            "OpenPI comp-action-chunk runtime ready checkpoint_dir=%s config_name=%s action_horizon=%d action_dim=%d",
+            (
+                "OpenPI comp-action-chunk runtime ready checkpoint_dir=%s config_name=%s "
+                "action_horizon=%d action_dim=%d openpi_param_dtype=%s"
+            ),
             self.checkpoint_dir,
             self.config.config_name,
             self.config.action_horizon,
             self.config.action_dim,
+            self.config.openpi_param_dtype or "checkpoint",
+        )
+
+    @staticmethod
+    def _resolve_openpi_restore_dtype(dtype_name: str | None):
+        import jax.numpy as jnp
+
+        if dtype_name in (None, ""):
+            return None
+        normalized = str(dtype_name).strip().lower()
+        if normalized in ("checkpoint", "native", "none"):
+            return None
+        if normalized in ("bf16", "bfloat16"):
+            return jnp.bfloat16
+        if normalized in ("fp32", "float32"):
+            return jnp.float32
+        if normalized in ("fp16", "float16"):
+            return jnp.float16
+        raise ValueError(
+            "OpenPI restore dtype must be one of bfloat16/bf16, float32/fp32, "
+            f"float16/fp16, or checkpoint/native/none. Got {dtype_name!r}."
         )
 
     def _validate_checkpoint_dir(self) -> None:

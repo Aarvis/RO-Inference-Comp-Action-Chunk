@@ -25,6 +25,7 @@ execution_mode="${EXECUTION_MODE:-async}"
 warmup_inferences="${ORIGAMI_WARMUP_INFERENCES:-1}"
 replay_warmup_training_loss="${ORIGAMI_REPLAY_WARMUP_TRAINING_LOSS:-1}"
 jax_mem_fraction="${ORIGAMI_JAX_MEM_FRACTION:-${XLA_PYTHON_CLIENT_MEM_FRACTION:-0.60}}"
+openpi_param_dtype="${ORIGAMI_OPENPI_PARAM_DTYPE:-}"
 
 case "${execution_mode}" in
   sync|async)
@@ -75,17 +76,25 @@ case "${mode}" in
   dataset-replay)
     echo "[submission] mode=dataset-replay bundle=${bundle_root}" >&2
     replay_warmup_args=(--warmup-inferences "${warmup_inferences}")
+    replay_openpi_args=()
+    if [ -n "${openpi_param_dtype}" ]; then
+      replay_openpi_args+=(--openpi-param-dtype "${openpi_param_dtype}")
+    fi
     replay_warmup_training_loss_lc="$(printf '%s' "${replay_warmup_training_loss}" | tr '[:upper:]' '[:lower:]')"
     if [ "${replay_warmup_training_loss_lc}" = "0" ] || [ "${replay_warmup_training_loss_lc}" = "false" ]; then
       replay_warmup_args+=(--skip-warmup-training-loss)
     fi
-    exec python run_dataset_replay.py --bundle-root "${bundle_root}" "${replay_warmup_args[@]}" "$@"
+    exec python run_dataset_replay.py --bundle-root "${bundle_root}" "${replay_warmup_args[@]}" "${replay_openpi_args[@]}" "$@"
     ;;
   serve)
     : "${ORIGAMI_ZENOH_ENDPOINT:?ORIGAMI_ZENOH_ENDPOINT is required}"
     : "${ORIGAMI_SESSION_ID:?ORIGAMI_SESSION_ID is required}"
     echo "[submission] mode=serve transport=origami-zenoh-v1 execution_mode=${execution_mode} endpoint=${ORIGAMI_ZENOH_ENDPOINT} session=${ORIGAMI_SESSION_ID} bundle=${bundle_root}" >&2
     python scripts/verify_comp_action_chunk_bundle.py --bundle-root "${bundle_root}"
+    serve_openpi_args=()
+    if [ -n "${openpi_param_dtype}" ]; then
+      serve_openpi_args+=(--openpi-param-dtype "${openpi_param_dtype}")
+    fi
     exec python serve_origami_comp_action_chunk_policy.py \
       --bundle-root "${bundle_root}" \
       --endpoint "${ORIGAMI_ZENOH_ENDPOINT}" \
@@ -93,6 +102,7 @@ case "${mode}" in
       --execution-mode "${execution_mode}" \
       --jax-mem-fraction "${jax_mem_fraction}" \
       --warmup-inferences "${warmup_inferences}" \
+      "${serve_openpi_args[@]}" \
       "$@"
     ;;
 esac

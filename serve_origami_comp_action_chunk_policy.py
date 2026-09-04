@@ -60,6 +60,12 @@ def build_argument_parser() -> argparse.ArgumentParser:
         default=None,
         help="Number of startup warmup inferences. Defaults to config.server.warmup_inferences.",
     )
+    parser.add_argument(
+        "--openpi-param-dtype",
+        choices=("bfloat16", "bf16", "float32", "fp32", "float16", "fp16", "checkpoint", "native", "none"),
+        default=os.environ.get("ORIGAMI_OPENPI_PARAM_DTYPE"),
+        help="Override OpenPI checkpoint restore dtype for testing. Defaults to config/env bfloat16.",
+    )
     parser.add_argument("--log-level", default=os.environ.get("LOG_LEVEL", "INFO"))
     return parser
 
@@ -109,6 +115,9 @@ def main() -> int:
             args.jax_mem_fraction,
             openpi_payload_path,
         )
+    if args.openpi_param_dtype is not None:
+        os.environ["ORIGAMI_OPENPI_PARAM_DTYPE"] = str(args.openpi_param_dtype)
+        logging.info("Overriding OpenPI checkpoint restore dtype=%s", args.openpi_param_dtype)
 
     config = dataclasses.replace(config, runtime=runtime, server=server)
     pipeline = CompActionChunkPipeline(config)

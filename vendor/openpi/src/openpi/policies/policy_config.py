@@ -17,6 +17,26 @@ from openpi.training import config as _config
 import openpi.transforms as transforms
 
 
+def _normalize_restore_dtype(restore_dtype: Any) -> Any:
+    if restore_dtype in (None, ""):
+        return None
+    if isinstance(restore_dtype, str):
+        normalized = restore_dtype.strip().lower()
+        if normalized in ("checkpoint", "native", "none"):
+            return None
+        if normalized in ("bf16", "bfloat16"):
+            return jnp.bfloat16
+        if normalized in ("fp32", "float32"):
+            return jnp.float32
+        if normalized in ("fp16", "float16"):
+            return jnp.float16
+        raise ValueError(
+            "restore_dtype must be one of bfloat16/bf16, float32/fp32, "
+            f"float16/fp16, or checkpoint/native/none. Got {restore_dtype!r}."
+        )
+    return restore_dtype
+
+
 def _maybe_use_checkpoint_origami_stats(
     train_config: _config.TrainConfig,
     checkpoint_dir: pathlib.Path,
@@ -74,6 +94,7 @@ def create_trained_policy(
     ppo_value_head_path: str | None = None,
     ppo_device: str | None = None,
     ppo_deterministic: bool | None = None,
+    restore_dtype: Any = jnp.bfloat16,
 ) -> _policy.Policy:
     """Create a policy from a trained checkpoint.
 
@@ -129,6 +150,7 @@ def create_trained_policy(
             default_prompt=default_prompt,
             norm_stats=norm_stats,
             pytorch_device=pytorch_device,
+            restore_dtype=restore_dtype,
         )
         return lehome_ppo_policy.LehomePPOPolicy(
             base_policy,
@@ -155,7 +177,9 @@ def create_trained_policy(
         model = train_config.model.load_pytorch(train_config, weight_path)
         model.paligemma_with_expert.to_bfloat16_for_selected_params("bfloat16")
     else:
-        model = train_config.model.load(_model.restore_params(checkpoint_dir / "params", dtype=jnp.bfloat16))
+        model = train_config.model.load(
+            _model.restore_params(checkpoint_dir / "params", dtype=_normalize_restore_dtype(restore_dtype))
+        )
     data_config = train_config.data.create(train_config.assets_dirs, train_config.model)
     if norm_stats is None:
         # We are loading the norm stats from the checkpoint instead of the config assets dir to make sure

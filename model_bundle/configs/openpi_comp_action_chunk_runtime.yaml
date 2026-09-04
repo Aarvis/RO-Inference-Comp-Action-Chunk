@@ -288,6 +288,7 @@ openpi:
 prompt: fold paper into airplane
 runtime:
   policy_sample_steps: 10
+  openpi_param_dtype: bfloat16
   random_seed: 0
   jax:
     preallocate: false

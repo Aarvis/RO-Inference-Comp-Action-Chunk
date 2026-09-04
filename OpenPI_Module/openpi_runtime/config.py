@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import dataclasses
 import json
+import os
 from pathlib import Path
 from typing import Any
 
@@ -26,6 +27,7 @@ class OpenPICompActionChunkRuntimeConfig:
     asset_id: str | None
     default_prompt: str
     policy_sample_steps: int
+    openpi_param_dtype: str | None
     random_seed: int
     image_size: int
     state_dim: int
@@ -85,6 +87,10 @@ def load_openpi_runtime_config(config_path: str | Path) -> OpenPICompActionChunk
     input_cfg = dict(payload.get("input", {}))
     output_cfg = dict(payload.get("output", {}))
     jax_cfg = dict(runtime_cfg.get("jax", {}))
+    param_dtype = os.environ.get(
+        "ORIGAMI_OPENPI_PARAM_DTYPE",
+        runtime_cfg.get("openpi_param_dtype", runtime_cfg.get("restore_dtype", "bfloat16")),
+    )
 
     checkpoint_dir = _resolve_path(paths_cfg.get("checkpoint_dir"), config_dir=config_dir)
     if checkpoint_dir is None:
@@ -99,6 +105,7 @@ def load_openpi_runtime_config(config_path: str | Path) -> OpenPICompActionChunk
         asset_id=paths_cfg.get("asset_id"),
         default_prompt=str(payload.get("prompt", "fold paper into airplane")),
         policy_sample_steps=int(runtime_cfg.get("policy_sample_steps", 10)),
+        openpi_param_dtype=None if param_dtype in (None, "") else str(param_dtype),
         random_seed=int(runtime_cfg.get("random_seed", 0)),
         image_size=int(input_cfg.get("image_size", 224)),
         state_dim=int(input_cfg.get("state_dim", 65)),

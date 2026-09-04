@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import dataclasses
 import logging
+import os
 from pathlib import Path
 
 from origami_comp_action_chunk_runtime import (
@@ -38,6 +39,19 @@ def parse_args() -> argparse.Namespace:
         help="Do not warm up the optional OpenPI training-style loss path.",
     )
     parser.add_argument("--tactile-modes", nargs="+", default=None, help="Subset/order of tactile modes to run.")
+    parser.add_argument(
+        "--phase-offsets",
+        nargs="+",
+        type=int,
+        default=None,
+        help="Replay only these phase offsets. Use 0 for starts 0,10,20,... with step_stride=10.",
+    )
+    parser.add_argument(
+        "--openpi-param-dtype",
+        choices=("bfloat16", "bf16", "float32", "fp32", "float16", "fp16", "checkpoint", "native", "none"),
+        default=os.environ.get("ORIGAMI_OPENPI_PARAM_DTYPE"),
+        help="Override OpenPI checkpoint restore dtype for replay/server testing. Defaults to config/env bfloat16.",
+    )
     parser.add_argument("--skip-action-error", action="store_true", help="Do not compute action rollout error.")
     parser.add_argument("--skip-training-loss", action="store_true", help="Do not compute OpenPI training-style loss.")
     parser.add_argument("--dry-run", action="store_true", help="Only validate/count replay episodes; do not load models.")
@@ -134,6 +148,9 @@ def _print_runtime_summary(result: dict) -> None:
 def main() -> int:
     args = parse_args()
     logging.basicConfig(level=getattr(logging, str(args.log_level).upper()), format="%(asctime)s %(levelname)s %(message)s")
+    if args.openpi_param_dtype is not None:
+        os.environ["ORIGAMI_OPENPI_PARAM_DTYPE"] = str(args.openpi_param_dtype)
+        logging.info("Overriding OpenPI checkpoint restore dtype=%s", args.openpi_param_dtype)
     config = load_runtime_config(config_path=args.config, bundle_root=args.bundle_root)
 
     paths = config.paths
@@ -159,6 +176,8 @@ def main() -> int:
         replay = dataclasses.replace(replay, warmup_training_loss=False)
     if args.tactile_modes is not None:
         replay = dataclasses.replace(replay, tactile_modes=tuple(str(mode) for mode in args.tactile_modes))
+    if args.phase_offsets is not None:
+        replay = dataclasses.replace(replay, phase_offsets=tuple(int(offset) for offset in args.phase_offsets))
     if args.skip_action_error:
         replay = dataclasses.replace(replay, compute_action_error=False)
     if args.skip_training_loss:
