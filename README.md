@@ -63,13 +63,13 @@ values used for packaging checks.
 
 Edit `configs/dataset_replay.yaml` first if the source checkpoints are at different paths. Then materialize the bundle:
 
-```powershell
-cd E:\Robot-Origami-Challenge\RO-Inference-Comp-Action-Chunk
+```bash
+cd /home/ubuntu/RO-Inference-Comp-Action-Chunk
 
-python .\scripts\prepare_comp_action_chunk_bundle.py `
-  --source-config .\configs\dataset_replay.yaml `
-  --bundle-root .\model_bundle `
-  --copy-mode copy `
+python ./scripts/prepare_comp_action_chunk_bundle.py \
+  --source-config ./configs/dataset_replay.yaml \
+  --bundle-root ./model_bundle \
+  --copy-mode copy \
   --overwrite
 ```
 
@@ -77,15 +77,17 @@ Use `--copy-mode hardlink` only when all source files are on the same filesystem
 
 If the script reports missing sources, copy them manually into the expected `model_bundle/` locations above, or fix the source paths in `configs/dataset_replay.yaml` and rerun the script.
 
-To refresh the project-vendored OpenPI source from
-`E:\Robot-Origami-Challenge\openpi`, run:
+To refresh the project-vendored OpenPI source from the sibling OpenPI checkout,
+for example `/home/ubuntu/RO-openpi`, run:
 
-```powershell
-python .\scripts\prepare_comp_action_chunk_bundle.py `
-  --source-config .\configs\dataset_replay.yaml `
-  --bundle-root .\model_bundle `
-  --copy-mode copy `
-  --include-openpi-source `
+```bash
+cd /home/ubuntu/RO-Inference-Comp-Action-Chunk
+
+python ./scripts/prepare_comp_action_chunk_bundle.py \
+  --source-config ./configs/dataset_replay.yaml \
+  --bundle-root ./model_bundle \
+  --copy-mode copy \
+  --include-openpi-source \
   --overwrite
 ```
 
@@ -137,24 +139,22 @@ server:
 
 Run layout verification before building:
 
-```powershell
-cd E:\Robot-Origami-Challenge\RO-Inference-Comp-Action-Chunk
-python .\scripts\verify_comp_action_chunk_bundle.py --bundle-root .\model_bundle
+```bash
+cd /home/ubuntu/RO-Inference-Comp-Action-Chunk
+python ./scripts/verify_comp_action_chunk_bundle.py --bundle-root ./model_bundle
 ```
 
 If the replay dataset should also be baked into the image:
 
-```powershell
-python .\scripts\verify_comp_action_chunk_bundle.py `
-  --bundle-root .\model_bundle `
-  --require-dataset-replay
+```bash
+python ./scripts/verify_comp_action_chunk_bundle.py --bundle-root ./model_bundle --require-dataset-replay
 ```
 
 During setup only, this command is useful for checking path rewrites before heavy weights are copied:
 
-```powershell
-python .\scripts\verify_comp_action_chunk_bundle.py `
-  --bundle-root .\model_bundle `
+```bash
+python ./scripts/verify_comp_action_chunk_bundle.py \
+  --bundle-root ./model_bundle \
   --allow-missing-model-files
 ```
 
@@ -162,58 +162,58 @@ python .\scripts\verify_comp_action_chunk_bundle.py `
 
 Run a small replay locally before building the image:
 
-```powershell
-cd E:\Robot-Origami-Challenge\RO-Inference-Comp-Action-Chunk
+```bash
+cd /home/ubuntu/RO-Inference-Comp-Action-Chunk
 
-$env:XLA_PYTHON_CLIENT_PREALLOCATE="false"
-$env:XLA_PYTHON_CLIENT_MEM_FRACTION="0.60"
-$env:XLA_PYTHON_CLIENT_ALLOCATOR="platform"
+export XLA_PYTHON_CLIENT_PREALLOCATE=false
+export XLA_PYTHON_CLIENT_MEM_FRACTION=0.60
+export XLA_PYTHON_CLIENT_ALLOCATOR=platform
 
-python .\run_dataset_replay.py `
-  --bundle-root .\model_bundle `
-  --warmup-inferences 1 `
-  --max-episodes 1 `
-  --max-total-samples 30 `
-  --max-loss-samples 10 `
-  --loss-every-n-samples 5 `
-  --output-dir .\outputs\dataset_replay_smoke
+python ./run_dataset_replay.py \
+  --bundle-root ./model_bundle \
+  --warmup-inferences 1 \
+  --max-episodes 1 \
+  --max-total-samples 30 \
+  --max-loss-samples 10 \
+  --loss-every-n-samples 5 \
+  --output-dir ./outputs/dataset_replay_smoke
 ```
 
 For a dry count without model loading:
 
-```powershell
-python .\run_dataset_replay.py --bundle-root .\model_bundle --dry-run
+```bash
+python ./run_dataset_replay.py --bundle-root ./model_bundle --dry-run
 ```
 
 ## Test Server Before Docker
 
 Start a local Zenoh router using the latest inference kit instructions, then start this policy server:
 
-```powershell
-cd E:\Robot-Origami-Challenge\RO-Inference-Comp-Action-Chunk
+```bash
+cd /home/ubuntu/RO-Inference-Comp-Action-Chunk
 
-$env:ORIGAMI_ZENOH_ENDPOINT="tcp/127.0.0.1:17447"
-$env:ORIGAMI_SESSION_ID="local-contract-test"
-$env:XLA_PYTHON_CLIENT_PREALLOCATE="false"
-$env:XLA_PYTHON_CLIENT_MEM_FRACTION="0.60"
-$env:XLA_PYTHON_CLIENT_ALLOCATOR="platform"
+export ORIGAMI_ZENOH_ENDPOINT=tcp/127.0.0.1:17447
+export ORIGAMI_SESSION_ID=local-contract-test
+export XLA_PYTHON_CLIENT_PREALLOCATE=false
+export XLA_PYTHON_CLIENT_MEM_FRACTION=0.60
+export XLA_PYTHON_CLIENT_ALLOCATOR=platform
 
-python .\serve_origami_comp_action_chunk_policy.py `
-  --bundle-root .\model_bundle `
-  --execution-mode async `
+python ./serve_origami_comp_action_chunk_policy.py \
+  --bundle-root ./model_bundle \
+  --execution-mode async \
   --warmup-inferences 1
 ```
 
 In another terminal, validate against the public checker:
 
-```powershell
-cd E:\Robot-Origami-Challenge\inferencekit_09_02_2026\sharpa_north_ces_lite_sdk-main
+```bash
+cd /home/ubuntu/inferencekit_09_02_2026/sharpa_north_ces_lite_sdk-main
 
-uv run --no-sync python .\examples\check_zenoh_policy.py `
-  --endpoint tcp/127.0.0.1:17447 `
-  --session-id local-contract-test `
-  --timeout 180 `
-  --requests 3 `
+uv run --no-sync python ./examples/check_zenoh_policy.py \
+  --endpoint tcp/127.0.0.1:17447 \
+  --session-id local-contract-test \
+  --timeout 180 \
+  --requests 3 \
   --expected-horizon 10
 ```
 
@@ -221,14 +221,10 @@ uv run --no-sync python .\examples\check_zenoh_policy.py `
 
 Build from this directory as the Docker context:
 
-```powershell
-cd E:\Robot-Origami-Challenge\RO-Inference-Comp-Action-Chunk
+```bash
+cd /home/ubuntu/RO-Inference-Comp-Action-Chunk
 
-docker build `
-  --build-arg EXECUTION_MODE=async `
-  -f .\docker\submission-zenoh-bundled.Dockerfile `
-  -t ro-inference-comp-action-chunk:async `
-  .
+docker build --build-arg EXECUTION_MODE=async -f ./docker/submission-zenoh-bundled.Dockerfile -t ro-inference-comp-action-chunk-fp32:async .
 ```
 
 The build context must contain the populated `model_bundle/`. The final image should not rely on host mounts, host Python packages, Hugging Face cache, or internet access at runtime.
@@ -238,7 +234,25 @@ The build context must contain the populated `model_bundle/`. The final image sh
 Verify the bundled assets inside the built image:
 
 ```bash
-docker run --rm --gpus all ro-inference-comp-action-chunk:async verify-bundle
+IMAGE='ro-inference-comp-action-chunk-fp32:async'
+
+docker run --rm --gpus all \
+  --shm-size 8g \
+  -e ORIGAMI_WARMUP_INFERENCES='10' \
+  -e ORIGAMI_OPENPI_PARAM_DTYPE='checkpoint' \
+  -e XLA_PYTHON_CLIENT_PREALLOCATE='true' \
+  -e ORIGAMI_JAX_MEM_FRACTION='0.70' \
+  "$IMAGE" \
+  dataset-replay \
+  --max-episodes 1 \
+  --max-total-samples 800 \
+  --max-loss-samples 800 \
+  --loss-every-n-samples 10 \
+  --output-dir /tmp/dataset_replay_validate
+```
+
+```bash
+docker run --rm --gpus all "$IMAGE" verify-bundle
 ```
 
 Run a small internal dataset replay from the baked-in replay episodes:
@@ -248,7 +262,7 @@ docker run --rm --gpus all \
   --shm-size 8g \
   -e ORIGAMI_JAX_MEM_FRACTION=0.60 \
   -e ORIGAMI_WARMUP_INFERENCES=1 \
-  ro-inference-comp-action-chunk:async \
+  "$IMAGE" \
   dataset-replay \
   --max-episodes 1 \
   --max-total-samples 30 \
@@ -265,7 +279,7 @@ Use the router image pinned by the public inference kit:
 
 ```bash
 ROUTER_IMAGE='eclipse/zenoh@sha256:157965d71e0bfd0a044d76a985ff0e5c306ad3968929168fb9678cd2a7fec23f'
-IMAGE='ro-inference-comp-action-chunk:async'
+IMAGE='ro-inference-comp-action-chunk-fp32:async'
 SESSION='local-contract-test'
 
 docker network create origami-contract-test
@@ -292,6 +306,7 @@ docker run -d --name origami-contract-policy \
   --cpus 8 \
   --pids-limit 512 \
   -e ORIGAMI_ZENOH_ENDPOINT=tcp/origami-contract-router:7447 \
+  -e ORIGAMI_OPENPI_PARAM_DTYPE='checkpoint' \
   -e ORIGAMI_SESSION_ID="$SESSION" \
   -e ORIGAMI_JAX_MEM_FRACTION=0.60 \
   "$IMAGE" \
@@ -329,10 +344,12 @@ docker network rm origami-contract-test
 The image entrypoint supports:
 
 ```bash
-docker run --rm --gpus all ro-inference-comp-action-chunk:async serve
-docker run --rm --gpus all ro-inference-comp-action-chunk:async verify-bundle
-docker run --rm --gpus all ro-inference-comp-action-chunk:async dataset-replay --dry-run
-docker run --rm -it ro-inference-comp-action-chunk:async bash
+IMAGE='ro-inference-comp-action-chunk-fp32:async'
+
+docker run --rm --gpus all "$IMAGE" serve
+docker run --rm --gpus all "$IMAGE" verify-bundle
+docker run --rm --gpus all "$IMAGE" dataset-replay --dry-run
+docker run --rm -it "$IMAGE" bash
 ```
 
 Serving requires only:
@@ -359,8 +376,8 @@ XLA_PYTHON_CLIENT_ALLOCATOR=platform
 After the Docker validator passes:
 
 ```bash
-IMAGE='ro-inference-comp-action-chunk:async'
-ARCHIVE='ro-inference-comp-action-chunk.tar'
+IMAGE='ro-inference-comp-action-chunk-fp32:async'
+ARCHIVE='ro-inference-comp-action-chunk-fp32.tar'
 
 docker save -o "$ARCHIVE" "$IMAGE"
 zstd -T0 -19 "$ARCHIVE"

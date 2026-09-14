@@ -37,6 +37,7 @@ RUN useradd --system --create-home --uid 1000 policy \
   && chown -R policy:policy /app/RO-Inference-Comp-Action-Chunk
 
 ENV PYTHONPATH=/app/RO-Inference-Comp-Action-Chunk \
+    PATH=/usr/local/lib/python3.11/site-packages/nvidia/cuda_nvcc/bin:${PATH} \
     ORIGAMI_MODEL_BUNDLE=/app/RO-Inference-Comp-Action-Chunk/model_bundle \
     EXECUTION_MODE=${EXECUTION_MODE} \
     HOME=/tmp/origami-home \

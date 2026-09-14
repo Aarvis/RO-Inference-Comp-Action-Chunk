@@ -61,13 +61,11 @@ Use the inference-kit router image:
 
 ```bash
 ROUTER_IMAGE='eclipse/zenoh@sha256:157965d71e0bfd0a044d76a985ff0e5c306ad3968929168fb9678cd2a7fec23f'
-IMAGE='ro-inference-comp-action-chunk:async'
+IMAGE='ro-inference-comp-action-chunk-fp32:async'
 SESSION='local-contract-test'
 
-docker network inspect origami-contract-test >/dev/null 2>&1 || \
-  docker network create origami-contract-test
-
-docker rm -f origami-contract-router >/dev/null 2>&1 || true
+docker rm -f origami-contract-policy origami-contract-router >/dev/null 2>&1 || true
+docker network inspect origami-contract-test >/dev/null 2>&1 || docker network create origami-contract-test
 
 docker run -d --name origami-contract-router \
   --network origami-contract-test \
@@ -100,9 +98,9 @@ docker run -d --name origami-contract-policy \
   -e ORIGAMI_SESSION_ID="$SESSION" \
   -e EXECUTION_MODE='async' \
   -e ORIGAMI_WARMUP_INFERENCES='10' \
-  -e ORIGAMI_JAX_MEM_FRACTION='0.60' \
-  -e XLA_PYTHON_CLIENT_PREALLOCATE='false' \
-  -e XLA_PYTHON_CLIENT_ALLOCATOR='platform' \
+  -e ORIGAMI_OPENPI_PARAM_DTYPE='checkpoint' \
+  -e XLA_PYTHON_CLIENT_PREALLOCATE='true' \
+  -e ORIGAMI_JAX_MEM_FRACTION='0.70' \
   "$IMAGE" \
   serve
 ```

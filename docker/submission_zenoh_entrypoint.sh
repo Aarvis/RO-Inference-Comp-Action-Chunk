@@ -55,6 +55,21 @@ export XLA_PYTHON_CLIENT_PREALLOCATE="${XLA_PYTHON_CLIENT_PREALLOCATE:-false}"
 export XLA_PYTHON_CLIENT_MEM_FRACTION="${jax_mem_fraction}"
 export XLA_PYTHON_CLIENT_ALLOCATOR="${XLA_PYTHON_CLIENT_ALLOCATOR:-platform}"
 
+cuda_nvcc_bin="$(python - <<'PY'
+import site
+from pathlib import Path
+
+for p in site.getsitepackages():
+    candidate = Path(p) / "nvidia" / "cuda_nvcc" / "bin"
+    if (candidate / "ptxas").exists():
+        print(candidate)
+        break
+PY
+)"
+if [ -n "${cuda_nvcc_bin}" ]; then
+  export PATH="${cuda_nvcc_bin}:${PATH}"
+fi
+
 mkdir -p \
   "${HOME}" \
   "${XDG_CACHE_HOME}" \
