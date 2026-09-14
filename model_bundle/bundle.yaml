@@ -42,12 +42,12 @@ dataset_replay:
   max_episodes: null
   action_horizon: 10
   step_stride: 10
-  phase_offsets: []
+  phase_offsets: [0]
   prompt: fold paper into airplane
   tactile_modes:
-  - deform_only
+  # - deform_only
   - deform_plus_raw
-  - mixed_50
+  # - mixed_50
   mixed_raw_probability: 0.5
   mixed_seed: 1234
   require_raw_for_deform_plus_raw: true
